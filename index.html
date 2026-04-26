@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillMap — AI Skill Assessment Agent</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #fafaf9; --surface: #ffffff; --border: rgba(0,0,0,0.1);
+    --text: #1a1a18; --muted: #6b6b67; --accent: #534AB7;
+    --accent-light: #EEEDFE; --accent-muted: #AFA9EC;
+    --success: #3B6D11; --success-bg: #EAF3DE;
+    --warn: #854F0B; --warn-bg: #FAEEDA;
+    --danger: #A32D2D; --danger-bg: #FCEBEB;
+    --teal: #0F6E56; --teal-bg: #E1F5EE;
+    --radius: 12px; --radius-sm: 8px;
+  }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; line-height: 1.6; }
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+  header { padding: 20px 32px; border-bottom: 0.5px solid var(--border); background: var(--surface); display: flex; align-items: center; gap: 12px; }
+  .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); display: inline-block; }
+  header h1 { font-size: 17px; font-weight: 500; letter-spacing: -0.3px; }
+  header span { font-size: 13px; color: var(--muted); }
+  .main { flex: 1; display: grid; grid-template-columns: 400px 1fr; max-width: 1400px; margin: 0 auto; width: 100%; }
+  .panel-left { border-right: 0.5px solid var(--border); padding: 28px 24px; overflow-y: auto; max-height: calc(100vh - 61px); }
+  .panel-right { padding: 28px 28px; overflow-y: auto; max-height: calc(100vh - 61px); }
+  .section-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .upload-box { border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; margin-bottom: 16px; background: var(--surface); }
+  .upload-box:hover { border-color: var(--accent-muted); background: var(--accent-light); }
+  .upload-box.active { border-color: var(--accent); background: var(--accent-light); }
+  .upload-icon { font-size: 24px; margin-bottom: 6px; }
+  .upload-box p { font-size: 13px; color: var(--muted); }
+  .upload-box strong { color: var(--text); font-weight: 500; }
+  #fileInput { display: none; }
+  .file-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--success-bg); color: var(--success); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 500; margin-top: 8px; }
+  textarea { width: 100%; border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 12px; font-size: 14px; font-family: inherit; resize: vertical; background: var(--surface); color: var(--text); line-height: 1.6; transition: border-color 0.2s; outline: none; }
+  textarea:focus { border-color: var(--accent-muted); box-shadow: 0 0 0 3px rgba(83,74,183,0.08); }
+  .form-section { margin-bottom: 20px; }
+  .btn-primary { width: 100%; padding: 11px 20px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:active { transform: scale(0.985); }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .chat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
+  .status-pill.idle { background: var(--bg); color: var(--muted); border: 0.5px solid var(--border); }
+  .status-pill.active { background: var(--accent-light); color: var(--accent); border: 0.5px solid var(--accent-muted); }
+  .status-pill.done { background: var(--success-bg); color: var(--success); border: 0.5px solid #C0DD97; }
+  .dot-pulse { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  #chatMessages { display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; min-height: 200px; }
+  .msg { max-width: 88%; padding: 12px 16px; border-radius: var(--radius); font-size: 14px; line-height: 1.65; }
+  .msg.ai { background: var(--surface); border: 0.5px solid var(--border); align-self: flex-start; color: var(--text); border-bottom-left-radius: 4px; }
+  .msg.user { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .msg.system { background: var(--teal-bg); color: var(--teal); align-self: center; font-size: 12px; padding: 6px 14px; border-radius: 20px; max-width: 100%; text-align: center; border: 0.5px solid #9FE1CB; }
+  .msg.typing { background: var(--surface); border: 0.5px solid var(--border); align-self: flex-start; padding: 12px 18px; border-bottom-left-radius: 4px; }
+  .typing-dots span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); margin: 0 2px; animation: bounce 1.2s ease-in-out infinite; }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+  .chat-input-wrap { display: flex; gap: 8px; align-items: flex-end; }
+  .chat-input-wrap textarea { margin: 0; min-height: 44px; max-height: 120px; resize: none; padding: 10px 14px; font-size: 14px; }
+  .send-btn { flex-shrink: 0; width: 40px; height: 40px; border-radius: 8px; border: none; background: var(--accent); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s; }
+  .send-btn:hover { opacity: 0.85; }
+  .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .send-btn svg { width: 16px; height: 16px; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 360px; color: var(--muted); text-align: center; gap: 8px; }
+  .empty-icon { font-size: 36px; opacity: 0.4; }
+  .empty-state p { font-size: 14px; max-width: 260px; line-height: 1.6; }
+
+  /* ── Plan Styles ── */
+  .plan-wrap { margin-top: 24px; display: flex; flex-direction: column; gap: 20px; }
+  .plan-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 20px 22px; }
+  .plan-card-title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; border-bottom: 0.5px solid var(--border); padding-bottom: 10px; }
+  .summary-text { font-size: 13.5px; color: var(--muted); line-height: 1.7; margin-bottom: 14px; font-style: italic; }
+  .kv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .kv-table tr { border-bottom: 0.5px solid var(--border); }
+  .kv-table tr:last-child { border-bottom: none; }
+  .kv-table td { padding: 7px 4px; vertical-align: top; }
+  .kv-table td:first-child { color: var(--muted); width: 52%; font-weight: 500; }
+  .kv-table td:last-child { color: var(--text); font-weight: 600; }
+
+  .ats-score { font-size: 28px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+  .bullet-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+  .bullet-list li { font-size: 13px; color: var(--text); display: flex; gap: 6px; }
+  .bullet-list li::before { content: "•"; color: var(--accent); flex-shrink: 0; }
+
+  .interview-chance { font-size: 28px; font-weight: 700; color: var(--success); margin-bottom: 8px; }
+  .interview-chance.low { color: var(--danger); }
+  .interview-chance.mid { color: var(--warn); }
+
+  .meter-row { margin-bottom: 10px; }
+  .meter-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+  .meter-bar { height: 12px; background: #eee; border-radius: 6px; overflow: hidden; margin-bottom: 2px; }
+  .meter-fill { height: 100%; border-radius: 6px; transition: width 0.7s ease; }
+  .meter-fill.now { background: linear-gradient(90deg, #AFA9EC, #534AB7); }
+  .meter-fill.after { background: linear-gradient(90deg, #7FC97A, #3B6D11); }
+  .meter-val { font-size: 11px; color: var(--muted); text-align: right; }
+
+  .skill-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .skill-table th { text-align: left; font-size: 11px; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.5px; }
+  .skill-table td { padding: 8px 8px; border-bottom: 0.5px solid var(--border); vertical-align: top; line-height: 1.5; }
+  .skill-table tr:last-child td { border-bottom: none; }
+  .skill-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge-gap { background: var(--danger-bg); color: var(--danger); }
+  .badge-partial { background: var(--warn-bg); color: var(--warn); }
+  .badge-strong { background: var(--success-bg); color: var(--success); }
+
+  .roadmap-week { margin-bottom: 14px; }
+  .roadmap-week-header { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .roadmap-week-skill { font-size: 13.5px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .roadmap-tasks { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+  .roadmap-tasks li { font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; }
+  .roadmap-tasks li::before { content: "→"; color: var(--accent-muted); flex-shrink: 0; }
+  .adjacent-row { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); font-size: 12.5px; color: var(--muted); }
+  .adjacent-row strong { color: var(--text); }
+
+  .divider { border: none; border-top: 0.5px solid var(--border); margin: 4px 0; }
+
+  @media (max-width: 860px) {
+    .main { grid-template-columns: 1fr; }
+    .panel-left { border-right: none; border-bottom: 0.5px solid var(--border); max-height: none; }
+    .panel-right { max-height: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <span class="logo-dot"></span>
+    <h1>SkillMap</h1>
+    <span>— AI Skill Assessment Agent</span>
+  </header>
+  <div class="main">
+    <!-- Left Panel -->
+    <div class="panel-left">
+      <div class="form-section">
+        <div class="section-label">Resume / CV</div>
+        <div class="upload-box" id="uploadBox" onclick="document.getElementById('fileInput').click()">
+          <div class="upload-icon">📄</div>
+          <p><strong>Click to upload</strong> or drag & drop</p>
+          <p>PDF, DOCX, or TXT</p>
+        </div>
+        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt">
+        <div id="fileBadge" style="display:none"><span class="file-badge">✓ <span id="fileName"></span></span></div>
+        <div class="section-label" style="margin-top:12px">Or paste resume text</div>
+        <textarea id="resumeText" rows="6" placeholder="Paste your resume content here..."></textarea>
+      </div>
+      <div class="form-section">
+        <div class="section-label">Job Description</div>
+        <textarea id="jobDesc" rows="8" placeholder="Paste the full job description here..."></textarea>
+      </div>
+      <button class="btn-primary" id="startBtn" onclick="startAssessment()">Start Assessment →</button>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="panel-right">
+      <div class="chat-header">
+        <div style="font-size:14px;font-weight:500;color:var(--text)">Assessment Chat</div>
+        <div class="status-pill idle" id="statusPill"><span>Waiting</span></div>
+      </div>
+      <div id="chatMessages">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">🎯</div>
+          <p>Upload your resume and paste a job description to begin your personalised skill assessment.</p>
+        </div>
+      </div>
+      <div class="chat-input-wrap" id="chatInputWrap" style="display:none">
+        <textarea id="userInput" placeholder="Type your response..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 8L14 8M14 8L9 3M14 8L9 13" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div id="learningPlan" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let convHistory = [], assessmentActive = false, resumeContent = '', fileBase64 = null, fileType = null;
+
+const uploadBox = document.getElementById('uploadBox');
+uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.classList.add('active'); });
+uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('active'));
+uploadBox.addEventListener('drop', e => { e.preventDefault(); uploadBox.classList.remove('active'); handleFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileBadge').style.display = 'block';
+  uploadBox.classList.add('active');
+  const r = new FileReader();
+  if (file.type === 'application/pdf') {
+    fileType = 'pdf';
+    r.onload = e => { fileBase64 = e.target.result.split(',')[1]; resumeContent = '[PDF uploaded]'; };
+    r.readAsDataURL(file);
+  } else {
+    fileType = 'text';
+    r.onload = e => { resumeContent = e.target.result; fileBase64 = null; };
+    r.readAsText(file);
+  }
+}
+
+function setStatus(s) {
+  const pill = document.getElementById('statusPill');
+  const map = { idle:['idle','Waiting'], active:['active','Assessing'], done:['done','Complete'] };
+  const [cls, label] = map[s] || map.idle;
+  pill.className = 'status-pill ' + cls;
+  pill.innerHTML = cls === 'active' ? `<span class="dot-pulse"></span><span>${label}</span>` : `<span>${label}</span>`;
+}
+
+function addMsg(type, text) {
+  const wrap = document.getElementById('chatMessages');
+  document.getElementById('emptyState')?.remove();
+  const div = document.createElement('div');
+  div.className = 'msg ' + type;
+  div.innerHTML = text.replace(/\n/g, '<br>');
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function showTyping() {
+  const wrap = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg typing'; div.id = 'typingIndicator';
+  div.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  wrap.appendChild(div); wrap.scrollTop = wrap.scrollHeight;
+}
+
+function removeTyping() { document.getElementById('typingIndicator')?.remove(); }
+
+async function startAssessment() {
+  const resumeTxt = document.getElementById('resumeText').value.trim();
+  const jobTxt = document.getElementById('jobDesc').value.trim();
+  const finalResume = resumeContent || resumeTxt;
+  if (!finalResume && !fileBase64) { alert('Please upload or paste your resume.'); return; }
+  if (!jobTxt) { alert('Please paste the job description.'); return; }
+
+  assessmentActive = true; convHistory = [];
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('chatInputWrap').style.display = 'flex';
+  document.getElementById('learningPlan').style.display = 'none';
+  document.getElementById('learningPlan').innerHTML = '';
+  document.getElementById('chatMessages').innerHTML = '';
+
+  setStatus('active');
+  addMsg('system', 'Assessment started — answering conversationally works best');
+  showTyping();
+
+  const systemPrompt = `You are SkillMap, an expert AI talent assessor and learning coach. You assess candidate skill proficiency conversationally, then produce a detailed structured report.
+
+RESUME:
+${fileBase64 ? '[PDF resume provided]' : finalResume}
+
+JOB DESCRIPTION:
+${jobTxt}
+
+YOUR PROCESS:
+1. Extract the top 5–8 required skills from the JD.
+2. Ask ONE focused probing question per skill — about real scenarios, tools, and problems solved.
+3. After ~2 questions per skill, internally rate: Strong / Partial / Gap.
+4. After covering all skills, produce the full report inside <PLAN>...</PLAN> tags in EXACTLY this format:
+
+<PLAN>
+📋 SUMMARY
+[Write exactly 2 honest sentences about the candidate's overall fit.]
+
+🎯 Total Score: XX/100
+📈 Projected Score: XX/100 after 16 weeks
+📊 Overall Level: Beginner / Developing / Strong
+⏱️ Plan Duration: 16 Weeks
+⏰ Time Commitment: ~1–2 hrs/day
+💪 Biggest Strength: [skill or trait]
+⚠️ Biggest Gap: [skill or area]
+
+---
+🤖 ATS MATCH SCORE
+Score: XX%
+Matching Skills: [comma-separated list]
+Missing Skills: [comma-separated list]
+
+---
+🎯 INTERVIEW PROBABILITY
+Chance: XX%
+Reasons:
+- [reason 1]
+- [reason 2]
+- [reason 3]
+
+---
+📊 READINESS METER
+Now: XX/100
+After: XX/100
+
+---
+🗺️ SKILL ANALYSIS
+[For each skill, one block:]
+Skill: [Name]
+Score: XX/100
+Level: Gap / Partial / Strong
+Evidence: [what resume showed]
+Gap Reason: [why it's lacking or strong]
+Time: [X weeks]
+
+---
+📅 16-WEEK ROADMAP
+Weeks 1–4: [Skill A]
+Tasks:
+- [task 1]
+- [task 2]
+- [task 3]
+
+Weeks 5–8: [Skill B]
+Tasks:
+- [task 1]
+- [task 2]
+
+Weeks 9–12: [Skill C]
+Tasks:
+- [task 1]
+- [task 2]
+
+Weeks 13–16: Final Project / Integration
+Tasks:
+- [task 1]
+- [task 2]
+
+Adjacent Skills to Develop: [comma-separated]
+Practical Focus: [1–2 sentences on hands-on learning approach]
+</PLAN>
+
+Start by warmly greeting the candidate, acknowledging you've reviewed both documents, then ask your FIRST probing question about the most critical skill. Be concise and conversational. One question at a time.`;
+
+  try {
+    const messages = [{ role: 'user', content: systemPrompt }];
+    if (fileBase64 && fileType === 'pdf') {
+      messages[0].content = [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileBase64 } },
+        { type: 'text', text: systemPrompt.replace('[PDF resume provided]', 'PDF resume is attached.') }
+      ];
+    }
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages })
+    });
+    const data = await res.json();
+    removeTyping();
+    const reply = data.content.map(b => b.text || '').join('');
+    convHistory.push({ role: 'user', content: systemPrompt });
+    convHistory.push({ role: 'assistant', content: reply });
+    processBotReply(reply);
+  } catch (e) {
+    removeTyping();
+    addMsg('system', 'Connection error. Please check your network and try again.');
+    setStatus('idle');
+  }
+}
+
+function processBotReply(reply) {
+  const planMatch = reply.match(/<PLAN>([\s\S]*?)<\/PLAN>/);
+  if (planMatch) {
+    const before = reply.replace(/<PLAN>[\s\S]*?<\/PLAN>/, '').trim();
+    if (before) addMsg('ai', before);
+    renderPlan(planMatch[1].trim());
+    setStatus('done');
+    assessmentActive = false;
+    document.getElementById('chatInputWrap').style.display = 'none';
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('startBtn').textContent = 'Start New Assessment →';
+  } else {
+    addMsg('ai', reply);
+  }
+}
+
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text || !assessmentActive) return;
+  input.value = ''; autoResize(input);
+  addMsg('user', text);
+  document.getElementById('sendBtn').disabled = true;
+  showTyping();
+  convHistory.push({ role: 'user', content: text });
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: convHistory })
+    });
+    const data = await res.json();
+    removeTyping();
+    const reply = data.content.map(b => b.text || '').join('');
+    convHistory.push({ role: 'assistant', content: reply });
+    processBotReply(reply);
+  } catch (e) {
+    removeTyping();
+    addMsg('system', 'Something went wrong. Please try again.');
+  }
+  document.getElementById('sendBtn').disabled = false;
+}
+
+/* ── Plan Renderer ── */
+function renderPlan(raw) {
+  const container = document.getElementById('learningPlan');
+  container.style.display = 'block';
+
+  function extract(label, text) {
+    const re = new RegExp(label + '[:\\s]+(.+)', 'i');
+    const m = text.match(re);
+    return m ? m[1].trim() : '';
+  }
+
+  function extractBlock(startLabel, endLabel, text) {
+    const re = new RegExp(startLabel + '[\\s\\S]*?(?=' + endLabel + '|$)', 'i');
+    const m = text.match(re);
+    return m ? m[0] : '';
+  }
+
+  function extractSection(marker, text) {
+    const idx = text.indexOf(marker);
+    if (idx === -1) return '';
+    const after = text.slice(idx + marker.length);
+    const next = after.search(/\n---/);
+    return next === -1 ? after.trim() : after.slice(0, next).trim();
+  }
+
+  // Summary block
+  const summarySection = extractSection('📋 SUMMARY', raw);
+  const summaryLines = summarySection.split('\n').filter(l => l.trim() && !l.startsWith('🎯') && !l.startsWith('📈') && !l.startsWith('📊') && !l.startsWith('⏱') && !l.startsWith('⏰') && !l.startsWith('💪') && !l.startsWith('⚠'));
+  const summaryText = summaryLines.slice(0,2).join(' ').trim();
+
+  const totalScore = extract('🎯 Total Score', raw) || extract('Total Score', raw);
+  const projScore  = extract('📈 Projected Score', raw) || extract('Projected Score', raw);
+  const level      = extract('📊 Overall Level', raw) || extract('Overall Level', raw);
+  const duration   = extract('⏱️ Plan Duration', raw) || extract('Plan Duration', raw) || '16 Weeks';
+  const commitment = extract('⏰ Time Commitment', raw) || extract('Time Commitment', raw);
+  const strength   = extract('💪 Biggest Strength', raw) || extract('Biggest Strength', raw);
+  const gap        = extract('⚠️ Biggest Gap', raw) || extract('Biggest Gap', raw);
+
+  // ATS
+  const atsSection = extractSection('🤖 ATS MATCH SCORE', raw);
+  const atsScore   = extract('Score', atsSection);
+  const matching   = extract('Matching Skills', atsSection);
+  const missing    = extract('Missing Skills', atsSection);
+
+  // Interview
+  const intSection = extractSection('🎯 INTERVIEW PROBABILITY', raw);
+  const intChance  = extract('Chance', intSection);
+  const intReasons = (intSection.match(/- .+/g) || []).map(l => l.replace(/^- /, ''));
+
+  // Readiness
+  const readSection = extractSection('📊 READINESS METER', raw);
+  const nowScore = parseInt(extract('Now', readSection)) || 0;
+  const afterScore = parseInt(extract('After', readSection)) || 0;
+
+  // Skills
+  const skillSection = extractSection('🗺️ SKILL ANALYSIS', raw);
+  const skillBlocks = skillSection.split(/(?=Skill:)/i).filter(s => s.trim().startsWith('Skill:') || s.trim().startsWith('Skill :'));
+  const skills = skillBlocks.map(s => ({
+    name:     extract('Skill', s),
+    score:    parseInt(extract('Score', s)) || 0,
+    level:    extract('Level', s),
+    evidence: extract('Evidence', s),
+    gapReason:extract('Gap Reason', s),
+    time:     extract('Time', s)
+  })).filter(s => s.name);
+
+  // Roadmap
+  const roadSection = extractSection('📅 16-WEEK ROADMAP', raw);
+  const weekBlocks = roadSection.split(/(?=Weeks? \d)/i).filter(s => s.trim());
+  const weeks = weekBlocks.filter(b => /Weeks? \d/i.test(b)).map(b => {
+    const headerMatch = b.match(/Weeks? ([\d–\-]+):\s*(.+)/i);
+    const tasks = (b.match(/- .+/g) || []).map(t => t.replace(/^- /, ''));
+    return { header: headerMatch ? `Weeks ${headerMatch[1]}` : '', skill: headerMatch ? headerMatch[2].trim() : '', tasks };
+  });
+  const adjacent = extract('Adjacent Skills to Develop', roadSection);
+  const practicalFocus = extract('Practical Focus', roadSection);
+
+  // Level color
+  function levelClass(l) {
+    const lv = (l||'').toLowerCase();
+    if (lv.includes('gap')) return ['badge-gap','🔴'];
+    if (lv.includes('partial')) return ['badge-partial','🟡'];
+    return ['badge-strong','🟢'];
+  }
+  function levelBadge(l) { const [c,e] = levelClass(l); return `<span class="skill-badge ${c}">${e} ${l}</span>`; }
+  function barColor(l) {
+    const lv = (l||'').toLowerCase();
+    if (lv.includes('gap')) return '#E24B4A';
+    if (lv.includes('partial')) return '#EF9F27';
+    return '#639922';
+  }
+  function intClass(pct) {
+    const n = parseInt(pct); if (n < 40) return 'low'; if (n < 70) return 'mid'; return '';
+  }
+
+  let html = `<div class="plan-wrap">`;
+
+  // 1. Summary card
+  html += `<div class="plan-card">
+    <div class="plan-card-title">📋 Summary</div>
+    ${summaryText ? `<div class="summary-text">${summaryText}</div>` : ''}
+    <table class="kv-table">
+      <tr><td>🎯 Total Score</td><td>${totalScore}</td></tr>
+      <tr><td>📈 Projected Score</td><td>${projScore}</td></tr>
+      <tr><td>📊 Overall Level</td><td>${level}</td></tr>
+      <tr><td>⏱️ Plan Duration</td><td>${duration}</td></tr>
+      <tr><td>⏰ Time Commitment</td><td>${commitment}</td></tr>
+      <tr><td>💪 Biggest Strength</td><td>${strength}</td></tr>
+      <tr><td>⚠️ Biggest Gap</td><td>${gap}</td></tr>
+    </table>
+  </div>`;
+
+  // 2. ATS card
+  html += `<div class="plan-card">
+    <div class="plan-card-title">🤖 ATS Match Score</div>
+    <div class="ats-score">${atsScore}</div>
+    <ul class="bullet-list">
+      <li><strong>Matching Skills:</strong>&nbsp;${matching}</li>
+      <li><strong>Missing Skills:</strong>&nbsp;${missing}</li>
+    </ul>
+  </div>`;
+
+  // 3. Interview card
+  const iClass = intClass(intChance);
+  html += `<div class="plan-card">
+    <div class="plan-card-title">🎯 Interview Probability</div>
+    <div class="interview-chance ${iClass}">${intChance}</div>
+    <ul class="bullet-list">${intReasons.map(r=>`<li>${r}</li>`).join('')}</ul>
+  </div>`;
+
+  // 4. Readiness meter
+  html += `<div class="plan-card">
+    <div class="plan-card-title">📊 Readiness Meter</div>
+    <div class="meter-row">
+      <div class="meter-label">Now — ${nowScore}/100</div>
+      <div class="meter-bar"><div class="meter-fill now" style="width:${nowScore}%"></div></div>
+    </div>
+    <div class="meter-row">
+      <div class="meter-label">After 16 Weeks — ${afterScore}/100</div>
+      <div class="meter-bar"><div class="meter-fill after" style="width:${afterScore}%"></div></div>
+    </div>
+  </div>`;
+
+  // 5. Skill analysis table
+  if (skills.length) {
+    html += `<div class="plan-card">
+      <div class="plan-card-title">🗺️ Skill Analysis</div>
+      <table class="skill-table">
+        <thead><tr>
+          <th>Skill</th><th>Score</th><th>Level</th><th>Evidence</th><th>Gap Reason</th><th>Time</th>
+        </tr></thead>
+        <tbody>`;
+    skills.forEach(s => {
+      const color = barColor(s.level);
+      html += `<tr>
+        <td><strong>${s.name}</strong></td>
+        <td>
+          <div style="font-weight:700;color:${color};margin-bottom:3px">${s.score}/100</div>
+          <div style="height:4px;background:#eee;border-radius:2px;width:60px"><div style="height:100%;width:${s.score}%;background:${color};border-radius:2px"></div></div>
+        </td>
+        <td>${levelBadge(s.level)}</td>
+        <td style="color:var(--muted)">${s.evidence}</td>
+        <td style="color:var(--muted)">${s.gapReason}</td>
+        <td style="white-space:nowrap;color:var(--accent)">${s.time}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  // 6. Roadmap
+  if (weeks.length) {
+    html += `<div class="plan-card">
+      <div class="plan-card-title">📅 16-Week Learning Roadmap</div>`;
+    weeks.forEach(w => {
+      html += `<div class="roadmap-week">
+        <div class="roadmap-week-header">${w.header}</div>
+        <div class="roadmap-week-skill">${w.skill}</div>
+        <ul class="roadmap-tasks">${w.tasks.map(t=>`<li>${t}</li>`).join('')}</ul>
+      </div>`;
+    });
+    if (adjacent) {
+      html += `<div class="adjacent-row">🔗 <strong>Adjacent Skills:</strong> ${adjacent}</div>`;
+    }
+    if (practicalFocus) {
+      html += `<div class="adjacent-row" style="margin-top:6px">🛠️ <strong>Practical Focus:</strong> ${practicalFocus}</div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+  container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+</script>
+</body>
+</html>
