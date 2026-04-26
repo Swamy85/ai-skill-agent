@@ -1,4 +1,4 @@
-# 🚀 SkillMap — AI Skill Assessment & Personalized Learning Agent
+#  SkillMap — AI Skill Assessment & Personalized Learning Agent
 
 SkillMap is an AI-powered web application that evaluates a candidate’s real technical skills by analyzing their **resume** and a **job description**, then conducts a **conversational assessment** and generates a **structured learning roadmap**.
 
@@ -6,7 +6,7 @@ Unlike traditional resume screening, SkillMap focuses on **actual skill depth**,
 
 ---
 
-## 🎯 Project Objective
+##  Project Objective
 
 A resume only shows what a candidate claims to know.  
 This project solves that gap by:
@@ -18,43 +18,43 @@ This project solves that gap by:
 
 ---
 
-## 🧠 Key Features
+##  Key Features
 
-### 🔹 AI-Based Skill Assessment
+###  AI-Based Skill Assessment
 - Extracts required skills from Job Description
 - Asks **real-world, scenario-based questions**
 - Evaluates answers conversationally
 
-### 🔹 Smart Skill Analysis
+###  Smart Skill Analysis
 - Classifies skills as:
   - Strong
   - Partial
   - Gap
 - Assigns scores for each skill
 
-### 🔹 ATS Match Score
+###  ATS Match Score
 - Calculates resume alignment with job description
 - Shows:
   - Matching skills
   - Missing skills
 
-### 🔹 Interview Probability Prediction
+###  Interview Probability Prediction
 - Predicts chances of getting shortlisted
 - Provides reasoning behind the score
 
-### 🔹 Readiness Meter
+###  Readiness Meter
 - Shows:
   - Current readiness
   - Expected readiness after improvement
 
-### 🔹 16-Week Learning Roadmap
+###  16-Week Learning Roadmap
 - Weekly structured plan
 - Task-based learning approach
 - Focus on practical skills
 
 ---
 
-## 🖥️ Tech Stack
+##  Tech Stack
 
 ### Frontend
 - HTML5
@@ -72,7 +72,7 @@ This project solves that gap by:
 
 ---
 
-## ⚙️ How It Works
+##  How It Works
 
 1. User uploads Resume or pastes text
 2. User enters Job Description
@@ -88,7 +88,7 @@ This project solves that gap by:
 
 ---
 
-## 📌 Note:
+##  Note:
 
 > ⚠️ This project uses the Anthropic API directly from the browser.
 
